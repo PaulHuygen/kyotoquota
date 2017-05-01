@@ -119,8 +119,8 @@ represents the username resp. group-id:
 \label{sec:quota-system}
 
 
-The command \verb|getquota|  obtains information about the quota of
-users/ The following shows an example of use:
+The command \verb|repquota|  obtains information about the quota of
+users. The following shows an example of use:
 
 \begin{verbatim}
 huygen@@kyoto:~/projecten/kyoto/quota/kyotoquota/nuweb$ sudo repquota / 
@@ -138,7 +138,7 @@ segers    --  189764 81895040  102368800            38     0     0
 \end{verbatim}
 
 
-So, command results in a table in which the name of the user is in the
+So, the command results in a table with the name of the user in the
 first column, the ``soft block-limit'' in the fourth column and the
 ``hard block limit'' in the fifth column.
 
@@ -174,9 +174,16 @@ The script works as follows:
 \item If so, perform the change.
 \end{itemize}
 
+When argument \verb|-l| is provided, the script will print a summary
+of the numbers.
+
+
 @o m4_projroot/adaptquota @{@%
 #!/bin/bash
 # adaptquota -- adapt user-quota to amount of free disk space
+# usage: adaptquota [-l]
+#  -l: perform logging
+@< set logging @>
 @< variables @>
 @< quota settings @>
 @< find out free diskspace @>
@@ -228,6 +235,17 @@ min_diskfree=$((minfreespace_perc*$disk_capacity_onep))
 max_diskfree=$((maxfreespace_perc*$disk_capacity_onep))
 @|min_diskfree max_diskfree @}
 
+If logging is on, print the numbers.
+
+@d find out free diskspace @{@%
+@< log variable @(disk capacity     @,disk_capacity@) @>
+@< log variable @(minimal required  @,min_diskfree@) @>
+@< log variable @(safe minimum      @,max_diskfree@) @>
+
+@| @}
+
+
+
 \subsection{Determine whether quota should be expanded or reduced}
 \label{sec:find_out_expand_reduce}
 
@@ -246,6 +264,7 @@ then
   change="Inc"
 fi
 @|change @}
+
 
 \subsection{Change the quota}
 \label{sec:changequota}
@@ -282,6 +301,7 @@ user:
 @d find out what the quota currently are @{@%
 @< find the name of a regular user @(sixpack@) @>
 @< get hard quotum of user @($sixpack@,current_quotum@) @>
+@< log variable @(old quotum        @,max_diskfree@) @>
 @| current_quotum, sixpack @}
 
 @d find the name of a regular user @{@%
@@ -311,13 +331,15 @@ then
   new_hardquotum=$((reduction_perc*current_quotum_onep))
 else
   new_hardquotum=$current_quotum
-  max_hardquotum=$((max_quota_perc*$max_capacity_onep))
+  max_hardquotum=$((max_quota_perc*$disk_capacity_onep))
   if
     [ $current_quotum -lt $max_hardquotum ]
   then
     new_hardquotum=$((expansion_perc*current_quotum_onep))
   fi
 fi
+@< log variable @(max quotum        @,max_hardquotum@) @>
+@< log variable @(new quotum        @,new_hardquotum@) @>
 @| @}
 
 We have to set a soft-max and a quota for students. When a user
@@ -368,6 +390,37 @@ quotacheck -vgum /
 quotaon /
 @| quotaon quotacheck quotaon @}
   
+\subsection{Logging}
+\label{sec:logging}
+
+When the user gives argument \verb|-l|, write a summary of the
+numbers.
+
+First, find out whether the user gave the argument
+
+@d set logging @{@%
+key="$1"
+if
+  [ "$key" == "-l" ]
+then
+  logging="y"
+else
+  logging="n"
+fi
+
+
+@| logging @}
+
+The following macro prints a variable if logging is on:
+
+@d log variable @{@%
+if 
+  [ "logging" == "y" ]
+then
+  echo "@1:" \$@2
+fi
+@| @}
+
 
 
 

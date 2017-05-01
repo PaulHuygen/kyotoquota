@@ -35,7 +35,7 @@ m4_define(m4_device, `/dev/vda3')m4_dnl
 m4_define(m4_max_quota_perc, 20)m4_dnl
 m4_define(m4_max_studquota_perc, 2)m4_dnl
 m4_define(m4_minfreespace_perc, 5)m4_dnl
-m4_define(m4_maxfreespace_perc, 40)m4_dnl
+m4_define(m4_maxfreespace_perc, 30)m4_dnl
 m4_define(m4_reduction_perc, 95)m4_dnl
 m4_define(m4_expansion_perc, 105)m4_dnl
 m4_define(m4_usergroup_id, 100)m4_dnl

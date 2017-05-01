@@ -186,3 +186,8 @@ TSWLatexianTemp*
 
 # KBibTeX
 *~[0-9]*
+
+# Misc.
+nuweb/kyotoquota.w
+nuweb/m4_kyotoquota.w
+nuweb/kyotoquota.tex
