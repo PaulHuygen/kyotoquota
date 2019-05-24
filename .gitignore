@@ -1,3 +1,8 @@
+# Specific files
+nuweb/kyotoquota.w
+nuweb/m4_kyotoquota.w
+
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof

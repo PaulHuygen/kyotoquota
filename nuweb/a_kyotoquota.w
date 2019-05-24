@@ -113,6 +113,71 @@ represents the username resp. group-id:
 @2=`echo @1 | gawk '{print $4}' FS=':'`
 @| @}
 
+\subsection{Store/retrieve the quota settings}
+\label{sec:store_retrieve}
+
+The script that we make will set quota for the two user-groups. The
+new settings will be communicated to the quota-system of the operating
+system, but it is convenient to store the settings in a file that can be
+read the next time that the script starts.
+
+Therefore, generate a file \verb|kyotoquota| in directory
+\verb|m4_etcdir|. Write the following line in that file:
+
+\verb|userquotum: XXXXXX|
+
+where \verb|XXXXX| signifies the actual user-quotum.
+
+
+The following two functions, \verb|store_quota| and \verb|read_quota|
+store quota in a file resp read the quota from a file:
+
+Function \verb|store_quota| accepts a quota set-value as arguments and
+generates a new file.
+
+@d functions @{@%
+
+function store_quota {
+  quotum=$1
+  echo "userquotum: " $quotum > m4_etcdir/m4_quotastore_filename
+}
+@| store_quota @}
+
+
+Function \verb|retrieve_quota| reads file, tries to find a line that
+begins with \verb|userquotum:|, reads the quota setting from that
+line and assigns it to variable \verb|old_userquotum|. If the file
+does not exist or the file does not contain the
+quota setting, the function writes the empty string in
+\verb|old_userquotum|.
+
+
+
+@d functions @{@%
+
+old_userquotum="" # Set global scope.
+  
+function retrieve_quota {
+  old_userquotum=""
+  if
+    [ -e "m4_etcdir/m4_quotastore_filename" ]
+  then
+    while
+      read line
+      do
+        parametername=${line%%:*}
+        if
+        [ "$parametername" == "userquotum" ]
+        then
+          old_userquotum=${line##*:}
+          break
+        fi
+      done <m4_etcdir/m4_quotastore_filename
+  fi  
+}
+
+
+@| old_userquotum retrieve_quota @}
 
 
 \subsection{The quota system}
@@ -185,6 +250,7 @@ of the numbers.
 #  -l: perform logging
 @< set logging @>
 @< variables @>
+@< functions @>
 @< quota settings @>
 @< find out free diskspace @>
 @< determine whether quota should be reduced or possibly expanded @>
@@ -273,10 +339,37 @@ If we have to change the quota, we must first find out what the quota
 currently are, then calculate what the quota should be, and finally
 set the new quota.
 
-Note, that when variable \verb|change| tells us to increase the quota,
-it is possible that we do not want to do that because the quota have
-already reached their maximum values. In that case, we set the new
-value for the quotum equal to the current value.
+@% Note, that when variable \verb|change| tells us to increase the quota,
+@% it is possible that we do not want to do that because the quota have
+@% already reached their maximum values. In that case, we set the new
+@% value for the quotum equal to the current value.
+
+If variable \verb|change| tells us to increase the quota, we have to
+do the following:
+
+\begin{enumerate}
+\item Try to get the current quota from the file
+  \verb|m4_etcdir/kyotoquota| and put it in variable
+  \verb|old_userquotum|. It is the hard quota-limit of regular users.
+  If that is not successful, set the variable to the maximum value
+  that we allow.
+\item Calculate a new value. Dependent of the contents of variable
+  \verb|change|, the new value is 5\% more or 5\% less that the value
+  of \verb|old_userquotum|, with a maximum of 20\% of the disk
+  capacity.
+\item Assign variable \verb|new_hardquotum| to the new quotum
+\item Write \verb|new_hardquotum| in file \verb|m4_etcdir/kyotoquota|.
+\item Calculate the ``soft-quotum'' for regular users and the
+  ``hard-quotum'' and ``soft-quotum'' for students.
+\item Apply the new quota.
+
+\end{enumerate}
+
+@% it is possible that we do not want to do that because the quota have
+@% already reached their maximum values. In that case, we set the new
+@% value for the quotum equal to the current value.
+
+
 
 @d expand or reduce quota @{@%
 if
@@ -284,58 +377,76 @@ if
 then
   @< find out what the quota currently are @>
   @< calculate new quota @>
-  if [ ! $new_hardquotum == $current_quotum ]
+  if [ ! $new_hardquotum == $old_userquotum ]
   then
+    store_quota $new_hardquotum
     @< activate new quota @>
   fi
 fi
 @| @}
 
-To find out what the quota currently are, find the quota of a random regular
-user:
-\begin{itemize}
-\item Find the name of a user of the ``user'' group in \verb|/etc/passwd|.
-\item Find her quota in a ``quota report''.
-\end{itemize}
+Find the current hard-quotum setting for a regular user in file
+\verb|m4_etcdir/m4_quotastore_filename|. If the quota cannot be found
+there, set the quota to slighty less than the maximum quotum
+allowed. Slightly less to force updating the quota in the operating
+system when there is plenty of disk-space and
+\verb|m4_etcdir/m4_quotastore_filename| does not exist.
 
 @d find out what the quota currently are @{@%
-@< find the name of a regular user @(sixpack@) @>
-@< get hard quotum of user @($sixpack@,current_quotum@) @>
-@< log variable @(old quotum        @,max_diskfree@) @>
-@| current_quotum, sixpack @}
-
-@d find the name of a regular user @{@%
-while
-  read line
-do
-    @< find username in line of password-file @($line@,user@) @>
-    @< find group-id in line of password-file @($line@,group_id@) @>
-    if
-      [ $group_id -eq $usergroup_id ]
-    then
-      @1=$user
-      break
-    fi
-done < /etc/passwd
+retrieve_quota
+if
+  [ "$old_userquotum" == "" ]
+then
+  max_hardquotum=$((max_quota_perc*$disk_capacity_onep))  
+  old_userquotum=$((max_hardquotum-100))
+fi
 @| @}
+
+
+@% \begin{itemize}
+@% \item Find the name of a user of the ``user'' group in \verb|/etc/passwd|.
+@% \item Find her quota in a ``quota report''.
+@% \end{itemize}
+
+@% @d find out what the quota currently are @{@%
+@% @< find the name of a regular user @(sixpack@) @>
+@% @< get hard quotum of user @($sixpack@,current_quotum@) @>
+@% @< log variable @(old quotum        @,max_diskfree@) @>
+@% @| current_quotum, sixpack @}
+@% 
+@% @d find the name of a regular user @{@%
+@% while
+@%   read line
+@% do
+@%     @< find username in line of password-file @($line@,user@) @>
+@%     @< find group-id in line of password-file @($line@,group_id@) @>
+@%     if
+@%       [ $group_id -eq $usergroup_id ]
+@%     then
+@%       @1=$user
+@%       break
+@%     fi
+@% done < /etc/passwd
+@% @| @}
 
 If the quota should be reduced, multiply the current hard-quotum with
 the decrease-fraction. If the quota might possibly be increased,
 first look whether the quotum has not yet attained its max. 
 
 @d calculate new quota @{@%
-current_quotum_onep=${current_quotum%??}
+old_userquotum_onep=${old_userquotum%??}
 if
   [ "$change" == "Dec" ]
 then
-  new_hardquotum=$((reduction_perc*current_quotum_onep))
+  new_hardquotum=$((reduction_perc*old_userquotum_onep))
 else
-  new_hardquotum=$current_quotum
+  new_hardquotum=$((expansion_perc*old_userquotum_onep))
   max_hardquotum=$((max_quota_perc*$disk_capacity_onep))
   if
-    [ $current_quotum -lt $max_hardquotum ]
+    [ $new_hardquotum -gt $max_hardquotum ]
   then
-    new_hardquotum=$((expansion_perc*current_quotum_onep))
+    new_hardquotum=$max_hardquotum
+@%     new_hardquotum=$((expansion_perc*old_userquotum_onep))
   fi
 fi
 @< log variable @(max quotum        @,max_hardquotum@) @>
@@ -355,7 +466,6 @@ new_softquotum=$((soft_perc*$new_hardquotum_onep))
 new_hardquotum_studs=$((10*$new_hardquotum_onep))
 new_softquotum_studs=$((8*$new_hardquotum_onep))
 @| @}
-
 
 \subsection{Activate new quota}
 \label{sec:activate}
@@ -492,7 +602,7 @@ The raw document is named
 \verb|a_<!!>m4_progname<!!>.w|. Figure~\ref{fig:fileschema}
 \begin{figure}[hbtp]
   \centering
-  \includegraphics{fileschema.fig}
+@%  \includegraphics{fileschema.fig}
   \caption{Translation of the raw code of this document into
     printable/viewable documents and into program sources. The figure
     shows the pathways and the main files involved.}

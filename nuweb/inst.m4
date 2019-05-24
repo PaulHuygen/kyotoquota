@@ -14,6 +14,8 @@ m4_define(m4_printpdf, `lpr '$1`.pdf')m4_dnl
 m4_define(m4_viewpdf, `evince '$1`.pdf')m4_dnl
 m4_define(m4_latex, `pdflatex '$1)m4_dnl
 m4_define(m4_nuwebbinary, `/usr/local/bin/nuweb')m4_dnl
+m4_define(m4_etcdir, `/usr/local/etc')m4_dnl To store data.
+m4_define(m4_quotastore_filename, `kyotoquota')m4_dnl
 m4_dnl
 m4_dnl Paths and URL's
 m4_dnl

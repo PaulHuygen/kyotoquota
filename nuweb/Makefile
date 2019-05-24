@@ -72,9 +72,9 @@ m4_htmlbibfil : m4_anuwebdir/kyotoquota.bib
 	cp m4_anuwebdir/kyotoquota.bib m4_htmlbibfil
 
 m4_htmltarget : m4_htmlsource m4_4htfildest $(HTML_PS_FIG_NAMES) $(HTML_PST_NAMES) m4_htmlbibfil
-	cp w2html /home/huygen/projecten/kyoto/quota/kyotoquota/bin
-	cd /home/huygen/projecten/kyoto/quota/kyotoquota/bin && chmod 775 w2html
-	cd m4_htmldocdir && /home/huygen/projecten/kyoto/quota/kyotoquota/bin/w2html kyotoquota.w
+	cp w2html /home/paul/temp/kyotoquota/bin
+	cd /home/paul/temp/kyotoquota/bin && chmod 775 w2html
+	cd m4_htmldocdir && /home/paul/temp/kyotoquota/bin/w2html kyotoquota.w
 
 
 pdf : kyotoquota.pdf
